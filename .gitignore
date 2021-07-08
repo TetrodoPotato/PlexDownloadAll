@@ -1,0 +1,13 @@
+.nyc_output
+**/*.tsbuildinfo
+coverage
+dist
+node_modules
+OutDir
+package-lock.json
+!webpack.config.js
+!browser.webpack.config.js
+Build
+BrowserScratchpad
+debug.log
+/lib/Test

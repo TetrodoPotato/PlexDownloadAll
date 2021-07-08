@@ -1,0 +1,137 @@
+{
+    "root": true,
+    "parserOptions": {
+        "project": [
+            "./tsconfig.json"
+        ]
+    },
+    "parser": "@typescript-eslint/parser",
+    "plugins": [
+        "@typescript-eslint"
+    ],
+    "extends": [
+        "eslint:recommended",
+        "plugin:@typescript-eslint/eslint-recommended",
+        "plugin:@typescript-eslint/recommended"
+    ],
+    "ignorePatterns": [
+        "node_modules/",
+        "lib/",
+        "BrowserScratchpad/"
+    ],
+    "rules": {
+        "@typescript-eslint/explicit-module-boundary-types": [
+            "error",
+            {
+                "allowArgumentsExplicitlyTypedAsAny": true
+            }
+        ],
+        "@typescript-eslint/no-unused-vars": [
+            "error",
+            {
+                "vars": "all",
+                "args": "none",
+                "ignoreRestSiblings": false
+            }
+        ],
+        "@typescript-eslint/triple-slash-reference": "error",
+        "@typescript-eslint/no-namespace": "error",
+        "@typescript-eslint/prefer-for-of": "error",
+        "@typescript-eslint/promise-function-async": "error",
+        "@typescript-eslint/await-thenable": "error",
+        "curly": "error",
+        "@typescript-eslint/array-type": [
+            "error",
+            {
+                "default": "generic",
+                "readonly": "generic"
+            }
+        ],
+        "semi": [
+            "error",
+            "always"
+        ],
+        "@typescript-eslint/no-for-in-array": "error",
+        "no-var": "error",
+        "eqeqeq": "error",
+        "valid-typeof": "error",
+        "@typescript-eslint/no-invalid-void-type": "error",
+        "prefer-const": "error",
+        "@typescript-eslint/prefer-readonly": "error",
+        "new-parens": "error",
+        "no-caller": "error",
+        "no-console": "error",
+        "quotes": [
+            "error",
+            "single",
+            {
+                "avoidEscape": true,
+                "allowTemplateLiterals": true
+            }
+        ],
+        "@typescript-eslint/ban-types": [
+            "error",
+            {
+                "types": {
+                    "String": {
+                        "message": "Use string instead",
+                        "fixWith": "string"
+                    },
+                    "Number": {
+                        "message": "Use number instead",
+                        "fixWith": "number"
+                    },
+                    "Boolean": {
+                        "message": "Use boolean instead",
+                        "fixWith": "boolean"
+                    },
+                    "Object": {
+                        "message": "Use object instead",
+                        "fixWith": "object"
+                    },
+                    "Function": {
+                        "message": "Ban types"
+                    }
+                },
+                "extendDefaults": false
+            }
+        ],
+        "@typescript-eslint/member-ordering": [
+            "error",
+            {
+                "default": {
+                    "order": "alphabetically",
+                    "memberTypes": [
+                        "public-static-field",
+                        "protected-static-field",
+                        "private-static-field",
+                        "public-static-method",
+                        "private-static-method",
+                        "protected-static-method",
+                        "public-instance-field",
+                        "protected-instance-field",
+                        "private-instance-field",
+                        "public-constructor",
+                        "protected-constructor",
+                        "private-constructor",
+                        "public-instance-method",
+                        "protected-instance-method",
+                        "private-instance-method"
+                    ]
+                }
+            }
+        ],
+        "max-classes-per-file": "off",
+        "no-unused-vars": "off",
+        "@typescript-eslint/no-inferrable-types": "off",
+        "no-conditional-assignment": "off",
+        "no-consecutive-blank-lines": "off",
+        "no-angle-bracket-type-assertion": "off",
+        "no-string-literal": "off",
+        "no-bitwise": "off",
+        "@typescript-eslint/no-this-alias": "off",
+        "no-use-before-declare": "off",
+        "no-prototype-builtins": "off",
+        "@typescript-eslint/no-explicit-any": "off"
+    }
+}

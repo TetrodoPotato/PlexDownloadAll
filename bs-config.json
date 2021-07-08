@@ -1,0 +1,17 @@
+{
+    "port": 5500,
+    "server": {
+        "baseDir": "./Page"
+    },
+    "injectChanges": true,
+    "open": "local",
+    "startPath": "",
+    "logLevel": "silent",
+    "codeSync": true,
+    "files": [
+        "./Page/**/*.js",
+        "./Page/**/*.html",
+        "./Page/**/*.css"
+    ],
+    "watchEvents": ["add", "change"]
+}

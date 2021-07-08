@@ -1,0 +1,78 @@
+{
+    "name": "plexdownloadall",
+    "version": "0.0.1",
+    "description": "PlexDownloadAll",
+    "author": {
+        "name": "Kartoffeleintopf"
+    },
+    "files": [
+        "lib/Source/**/*"
+    ],
+    "main": "lib/Source/Index.js",
+    "types": "lib/Source/Index.d.ts",
+    "devDependencies": {
+        "@types/mocha": "^5.2.7",
+        "@types/node": "^8.10.66",
+        "@typescript-eslint/eslint-plugin": "^4.6.1",
+        "@typescript-eslint/parser": "^4.6.1",
+        "eslint": "^7.13.0",
+        "jsdom": "^16.4.0",
+        "jsdom-global": "^3.0.2",
+        "lite-server": "^2.6.1",
+        "mocha": "^7.2.0",
+        "npm-run-all": "^4.1.5",
+        "nyc": "^15.1.0",
+        "rimraf": "^3.0.2",
+        "ts-loader": "^8.0.9",
+        "ts-node": "^8.10.2",
+        "typescript": "^3.9.7",
+        "webpack": "^5.43.0",
+        "webpack-cli": "^3.3.12"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/Kartoffeleintopf/PlexDownloadAll.git"
+    },
+    "bugs": {
+        "url": "https://github.com/Kartoffeleintopf/PlexDownloadAll/issues"
+    },
+    "homepage": "https://github.com/Kartoffeleintopf/PlexDownloadAll#readme",
+    "scripts": {
+        "build": "npx rimraf lib && tsc && webpack-cli --config webpack.config.js",
+        "test": "npx rimraf lib && tsc && nyc mocha",
+        "startPageWebpack": "webpack-cli --config webpack.config.js --watch",
+        "startLiteLocalhostServer": "lite-server",
+        "page": "run-p startPageWebpack startLiteLocalhostServer",
+        "lint": "npx eslint \"**/*.ts\" --config eslint.config.json --fix"
+    },
+    "mocha": {
+        "require": [
+            "ts-node/register",
+            "jsdom-global/register"
+        ],
+        "files": "**/*.test.ts",
+        "parallel": true,
+        "extension": [
+            "ts"
+        ],
+        "exclude": [
+            "**/*.d.ts"
+        ]
+    },
+    "nyc": {
+        "extension": [
+            ".ts"
+        ],
+        "include": [
+            "Source/*"
+        ],
+        "exclude": [
+            "**/*.d.ts"
+        ],
+        "reporter": [
+            "lcovonly",
+            "text"
+        ],
+        "all": true
+    }
+}
