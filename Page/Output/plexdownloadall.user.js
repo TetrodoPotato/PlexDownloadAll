@@ -1,5 +1,77 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
+// ==UserScript==
+// @name Plex download all series episodes
+// @namespace https://app.plex.tv/
+// @include /^https://app\.plex\.tv/desktop/.*$/
+// @version 1
+// @description Plex download all
+// @author Kartoffeleintopf
+// @run-at document-start
+// @noframes 
+// ==/UserScript==
+
+/******/ (() => { // webpackBootstrap
+/******/ 	"use strict";
+/******/ 	var __webpack_modules__ = ({
+
+/***/ "./Source/Index.ts":
+/*!*************************!*\
+  !*** ./Source/Index.ts ***!
+  \*************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const PlexDownload_1 = __webpack_require__(/*! ./PlexDownload */ "./Source/PlexDownload.ts");
+/**
+ * Open window with download url of media item.
+ * @param pUrl - Media url.
+ */
+const lDownloadMediaItemByUrl = (pUrl) => {
+    const lPlexDownload = new PlexDownload_1.PlexDownload();
+    lPlexDownload.getDownloadLinksEpisode(pUrl).then((pUrlList) => {
+        for (const lUrl of pUrlList) {
+            window.open(lUrl, '_blank').focus();
+        }
+    }).catch((e) => {
+        alert(e.message);
+    });
+};
+/**
+ * Start download.
+ * Decide single or multi download.
+ */
+const lStartDownloadFunction = async () => {
+    lDownloadMediaItemByUrl(window.location.href);
+};
+// Scan for play button and append download button.
+setInterval(() => {
+    const lPlayButton = document.querySelector('*[data-qa-id="preplay-play"]');
+    if (lPlayButton) {
+        const lDownloadbutton = document.querySelector('.plexDownloadButton');
+        if (!lDownloadbutton) {
+            // Create new download button.
+            const lNewDownloadButton = document.createElement('button');
+            lNewDownloadButton.setAttribute('style', 'height: 30px; padding: 0 15px; background-color: #e5a00d;color: #1f2326;border: 0; font-family: Open Sans Semibold,Helvetica Neue,Helvetica,Arial,sans-serif; text-transform: uppercase; border-radius: 4px;');
+            lNewDownloadButton.classList.add('plexDownloadButton');
+            lNewDownloadButton.addEventListener('click', lStartDownloadFunction);
+            lNewDownloadButton.appendChild(document.createTextNode('Download'));
+            // Append download button after play button.
+            lPlayButton.after(lNewDownloadButton);
+        }
+    }
+}, 250);
+
+
+/***/ }),
+
+/***/ "./Source/PlexDownload.ts":
+/*!********************************!*\
+  !*** ./Source/PlexDownload.ts ***!
+  \********************************/
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PlexDownload = void 0;
 class PlexDownload {
     /**
@@ -189,4 +261,43 @@ class PlexDownload {
     }
 }
 exports.PlexDownload = PlexDownload;
-//# sourceMappingURL=PlexDownload.js.map
+
+
+/***/ })
+
+/******/ 	});
+/************************************************************************/
+/******/ 	// The module cache
+/******/ 	var __webpack_module_cache__ = {};
+/******/ 	
+/******/ 	// The require function
+/******/ 	function __webpack_require__(moduleId) {
+/******/ 		// Check if module is in cache
+/******/ 		var cachedModule = __webpack_module_cache__[moduleId];
+/******/ 		if (cachedModule !== undefined) {
+/******/ 			return cachedModule.exports;
+/******/ 		}
+/******/ 		// Create a new module (and put it into the cache)
+/******/ 		var module = __webpack_module_cache__[moduleId] = {
+/******/ 			// no module.id needed
+/******/ 			// no module.loaded needed
+/******/ 			exports: {}
+/******/ 		};
+/******/ 	
+/******/ 		// Execute the module function
+/******/ 		__webpack_modules__[moduleId](module, module.exports, __webpack_require__);
+/******/ 	
+/******/ 		// Return the exports of the module
+/******/ 		return module.exports;
+/******/ 	}
+/******/ 	
+/************************************************************************/
+/******/ 	
+/******/ 	// startup
+/******/ 	// Load entry module and return exports
+/******/ 	__webpack_require__("./Source/Index.ts");
+/******/ 	// This entry module is referenced by other modules so it can't be inlined
+/******/ 	var __webpack_exports__ = __webpack_require__("./Source/PlexDownload.ts");
+/******/ 	
+/******/ })()
+;
