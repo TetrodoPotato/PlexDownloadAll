@@ -1,4 +1,4 @@
-import { PlexService } from './PlexService';
+import { MediaFileItem, PlexService } from './PlexService';
 
 export class PlexDownload {
 
@@ -9,20 +9,63 @@ export class PlexDownload {
     public constructor() {
         // Create overlay if it does not exists.
         if (document.querySelector('.PlexDownloadOverlay') === null) {
+            // Create overlay element.
             const lNewDownloadOverlay: HTMLDivElement = document.createElement('div');
             lNewDownloadOverlay.classList.add('PlexDownloadOverlay');
-            lNewDownloadOverlay.setAttribute('style', 'display: flex; border-bottom: 1px solid #5a5a5a; padding: 5px 0; margin: 3px 8px;');
+            lNewDownloadOverlay.setAttribute('style', `
+                position: fixed;
+                bottom: 6px;
+                right: 6px;
+                width: 360px;
+                background-color: #191a1c;
+                border-radius: 8px;
+                max-height: 300px;
+                overflow: auto;
+                box-shadow: 0 4px 10px rgb(0 0 0 / 35%);
+                font-family: Open Sans Regular,Helvetica Neue,Helvetica,Arial,sans-serif; 
+                font-size: 13px;
+            `);
+
+            // Append to body root.
             document.body.appendChild(lNewDownloadOverlay);
         }
     }
 
     /**
-     * Open window with download url of media item.
+     * Add all media item file of a season to the download queue.
+     * @param pUrl - Media url.
+     */
+    public async downloadSeasonMediaItemByUrl(pUrl: string): Promise<void> {
+        const lPlexService: PlexService = new PlexService();
+        const lUrlList = await lPlexService.getSeasonFileItemList(pUrl);
+
+        // Add each url to download queue
+        for (const lUrl of lUrlList) {
+            this.addDownloadToQueue(lUrl);
+        }
+    }
+
+    /**
+     * Add all media item file of a series to the download queue.
+     * @param pUrl - Media url.
+     */
+    public async downloadSeriesMediaItemByUrl(pUrl: string): Promise<void> {
+        const lPlexService: PlexService = new PlexService();
+        const lUrlList = await lPlexService.getSerieFileItemList(pUrl);
+
+        // Add each url to download queue
+        for (const lUrl of lUrlList) {
+            this.addDownloadToQueue(lUrl);
+        }
+    }
+
+    /**
+     * Add single media item file to the download queue.
      * @param pUrl - Media url.
      */
     public async downloadSingleMediaItemByUrl(pUrl: string): Promise<void> {
         const lPlexService: PlexService = new PlexService();
-        const lUrlList = await lPlexService.getDownloadLinksEpisode(pUrl);
+        const lUrlList = await lPlexService.getEpisodeFileItemList(pUrl);
 
         // Add each url to download queue
         for (const lUrl of lUrlList) {
@@ -32,23 +75,21 @@ export class PlexDownload {
 
     /**
      * Add download url to the download queue.
-     * @param pDownloadUrl - Download url.
+     * @param pMediaItem - Download url.
      */
-    private addDownloadToQueue(pDownloadUrl: string): void {
+    private addDownloadToQueue(pMediaItem: MediaFileItem): void {
         // Create download row element.
         const lDownloadElement: HTMLDivElement = document.createElement('div');
-        lDownloadElement.setAttribute('data-url', pDownloadUrl);
-        lDownloadElement.setAttribute('style', 'display: flex; border-bottom: 2px solid #333;');
+        lDownloadElement.setAttribute('data-url', pMediaItem.url);
+        lDownloadElement.setAttribute('data-filename', pMediaItem.fileName);
+        lDownloadElement.setAttribute('style', 'display: flex; border-bottom: 1px solid #7a7b7b; margin: 0px 6px; padding: 10px 0px;');
         lDownloadElement.classList.add('PlexDownloadElement');
-
-        // Get Media Key as temporary file name.
-        const lTemporaryFileName: string = pDownloadUrl.match(/\/library\/parts\/(\d+)\//)[1];
 
         // Create download file name.
         const lDownloadElementFileName: HTMLDivElement = document.createElement('div');
-        lDownloadElementFileName.appendChild(document.createTextNode(lTemporaryFileName));
+        lDownloadElementFileName.appendChild(document.createTextNode(pMediaItem.fileName));
         lDownloadElementFileName.classList.add('PlexDownloadElementFileName');
-        lDownloadElementFileName.setAttribute('style', 'flex: 1; border-right: 2px solid #545556;');
+        lDownloadElementFileName.setAttribute('style', 'flex: 1; border-right: 2px solid #545556; padding: 0 10px; overflow: hidden; white-space: nowrap; font-family: inherit; font-size: inherit;');
 
         // Create download progess.
         const lDownloadElementProgress: HTMLDivElement = document.createElement('div');
@@ -61,6 +102,9 @@ export class PlexDownload {
         lDownloadElementAbort.appendChild(document.createTextNode('X'));
         lDownloadElementAbort.classList.add('PlexDownloadElementAbort');
         lDownloadElementAbort.setAttribute('style', 'color: #ff3f3f; padding: 0px 10px; font-weight: bolder; cursor: pointer;');
+        lDownloadElementAbort.addEventListener('click', () => {
+            lDownloadElement.remove();
+        });
 
         // Add data element to download element.
         lDownloadElement.appendChild(lDownloadElementFileName);
@@ -97,8 +141,7 @@ export class PlexDownload {
         lAnchorElement.dispatchEvent(
             new MouseEvent('click', {
                 bubbles: true,
-                cancelable: true,
-                view: window
+                cancelable: true
             })
         );
 
@@ -124,8 +167,8 @@ export class PlexDownload {
 
             // Get needed data.
             const lDownloadUrl: string = lDownloadElement.getAttribute('data-url');
+            const lFileName: string = lDownloadElement.getAttribute('data-filename');
             const lProgressElement: HTMLDivElement = lDownloadElement.querySelector('.PlexDownloadElementProgress');
-            const lFileNameElement: HTMLDivElement = lDownloadElement.querySelector('.PlexDownloadElementFileName');
             const lAbortElement: HTMLDivElement = lDownloadElement.querySelector('.PlexDownloadElementAbort');
 
             // Close download element function.
@@ -138,20 +181,6 @@ export class PlexDownload {
             const lXhrRequest = new XMLHttpRequest();
             lXhrRequest.open('GET', lDownloadUrl, true);
             lXhrRequest.responseType = 'blob';
-            lXhrRequest.onreadystatechange = function () {
-                // On header loaded
-                if (lXhrRequest.readyState === XMLHttpRequest.HEADERS_RECEIVED) {
-                    const aaa = lXhrRequest.getAllResponseHeaders();
-
-                    // Get file name.
-                    //const lContentDispositionHeader = lXhrRequest.getResponseHeader('Content-Disposition');
-                    const lFileName = 'FILEMANETEST'; //lContentDispositionHeader.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)[1];
-
-                    // Update file name.
-                    lFileNameElement.innerHTML = '';
-                    lFileNameElement.appendChild(document.createTextNode(lFileName));
-                }
-            };
             lXhrRequest.onprogress = function (pProgressEvent) {
                 // Clear progress content.
                 lProgressElement.innerHTML = '';
@@ -174,10 +203,6 @@ export class PlexDownload {
             lXhrRequest.onload = () => {
                 // Read response.
                 const lBlob: Blob = lXhrRequest.response;
-
-                // Get file name.
-                // const lContentDispositionHeader = lXhrRequest.getResponseHeader('Content-Disposition');
-                const lFileName = 'FILEMANETEST'; //lContentDispositionHeader.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)[1];
 
                 // Download blob.
                 this.downloadBlob(lBlob, lFileName);
