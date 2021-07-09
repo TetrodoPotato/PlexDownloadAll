@@ -1,52 +1,29 @@
 export declare class PlexDownload {
-    private readonly mUrlConfig;
-    private readonly mXPathConfig;
     /**
      * Constructor.
+     * Initialize download overlay.
      */
     constructor();
     /**
-     * Get download link for single episode or movie.
-     * @param pMediaUrl - Media url.
+     * Open window with download url of media item.
+     * @param pUrl - Media url.
      */
-    getDownloadLinksEpisode(pMediaUrl: string): Promise<Array<string>>;
+    downloadSingleMediaItemByUrl(pUrl: string): Promise<void>;
     /**
-     * Get download link for all episodes of a season.
-     * @param pMediaUrl - Media url.
+     * Add download url to the download queue.
+     * @param pDownloadUrl - Download url.
      */
-    getDownloadLinksSeason(pMediaUrl: string): Promise<Array<string>>;
+    private addDownloadToQueue;
     /**
-     * Get download link for all episodes of a series.
-     * @param pMediaUrl - Media url.
+     * Download blob to user file system.
+     * @param pBlob - Blob.
+     * @param pFileName - Filename of downloaded file.
      */
-    getDownloadLinksSeries(pMediaUrl: string): Promise<Array<string>>;
+    private downloadBlob;
     /**
-     * Get media id from url.
-     * @param pMediaUrl - Current url.
+     * Get the next download element and start downloading
+     * if no other download is running.
      */
-    getMetaDataId(pMediaUrl: string): string;
-    /**
-     * Get download url of media.
-     * @param pMediaConnection - Media connection.
-     * @returns download url of media.
-     */
-    private getDownloadUrl;
-    /**
-     * Get access configuration for the current viewed media container.
-     * @param pCurrentUrl - Current media url.
-     */
-    private getLibraryAccessConfiguration;
-    private getMediaChilds;
-    /**
-     * Get Media id of base url.
-     * @param pAccessConfiguration - Device access configuration.
-     * @param pMetaDataId - MetaData Id.
-     */
-    private getMediaKey;
-    /**
-     * Get url response as xml document
-     * @param pUrl - Url.
-     */
-    private getXml;
+    private startNextDownloadElement;
 }
 //# sourceMappingURL=PlexDownload.d.ts.map
