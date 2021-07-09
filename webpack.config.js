@@ -51,7 +51,7 @@ module.exports = {
     devtool: false,
     output: {
         filename: `${getProjectName()}.user.js`,
-        path: Path.resolve(__dirname, 'Page', 'Output'),
+        path: Path.resolve(__dirname, 'Build'),
     },
     resolve: {
         extensions: ['.ts', '.js', '.css', '.html']

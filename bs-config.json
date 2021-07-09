@@ -1,7 +1,7 @@
 {
     "port": 5500,
     "server": {
-        "baseDir": "./Page"
+        "baseDir": "./"
     },
     "injectChanges": true,
     "open": "local",
