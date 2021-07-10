@@ -8,19 +8,10 @@ import { PlexDownload } from './PlexDownload';
      * Decide single or multi download.
      */
     const lStartDownloadFunction = async () => {
-        const lIsSingleMedia: boolean = document.querySelectorAll('*[class*="PrePlayDescendantList"').length === 0;
-        const lIsSeasonMedia: boolean = document.querySelectorAll('*[data-qa-id="preplay-mainTitle"] a').length > 0;
-
         const lCurrentUrl: string = window.location.href;
 
         try {
-            if (lIsSingleMedia) {
-                await lPlexDownload.downloadSingleMediaItemByUrl(lCurrentUrl);
-            } else if (lIsSeasonMedia) {
-                await lPlexDownload.downloadSeasonMediaItemByUrl(lCurrentUrl);
-            } else {
-                await lPlexDownload.downloadSeriesMediaItemByUrl(lCurrentUrl);
-            }
+            await lPlexDownload.downloadMediaItems(lCurrentUrl);
         } catch (e) {
             if (e instanceof Error) {
                 alert(e.message);

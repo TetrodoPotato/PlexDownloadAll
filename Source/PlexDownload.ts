@@ -15,7 +15,7 @@ export class PlexDownload {
             lNewDownloadOverlay.setAttribute('style', `
                 position: fixed;
                 bottom: 6px;
-                right: 6px;
+                right: 15px;
                 width: 360px;
                 background-color: #191a1c;
                 border-radius: 8px;
@@ -32,45 +32,17 @@ export class PlexDownload {
     }
 
     /**
-     * Add all media item file of a season to the download queue.
-     * @param pUrl - Media url.
+     * Adds all files from media item into the download queue.
+     * @param pUrl - Media item url.
      */
-    public async downloadSeasonMediaItemByUrl(pUrl: string): Promise<void> {
+    public async downloadMediaItems(pUrl: string): Promise<void>{
         const lPlexService: PlexService = new PlexService();
-        const lUrlList = await lPlexService.getSeasonFileItemList(pUrl);
+        const lUrlList = await lPlexService.getMediaItemFileList(pUrl);
 
         // Add each url to download queue
         for (const lUrl of lUrlList) {
             this.addDownloadToQueue(lUrl);
-        }
-    }
-
-    /**
-     * Add all media item file of a series to the download queue.
-     * @param pUrl - Media url.
-     */
-    public async downloadSeriesMediaItemByUrl(pUrl: string): Promise<void> {
-        const lPlexService: PlexService = new PlexService();
-        const lUrlList = await lPlexService.getSerieFileItemList(pUrl);
-
-        // Add each url to download queue
-        for (const lUrl of lUrlList) {
-            this.addDownloadToQueue(lUrl);
-        }
-    }
-
-    /**
-     * Add single media item file to the download queue.
-     * @param pUrl - Media url.
-     */
-    public async downloadSingleMediaItemByUrl(pUrl: string): Promise<void> {
-        const lPlexService: PlexService = new PlexService();
-        const lUrlList = await lPlexService.getEpisodeFileItemList(pUrl);
-
-        // Add each url to download queue
-        for (const lUrl of lUrlList) {
-            this.addDownloadToQueue(lUrl);
-        }
+        }   
     }
 
     /**

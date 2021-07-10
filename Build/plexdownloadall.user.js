@@ -29,19 +29,9 @@ const PlexDownload_1 = __webpack_require__(/*! ./PlexDownload */ "./Source/PlexD
      * Decide single or multi download.
      */
     const lStartDownloadFunction = async () => {
-        const lIsSingleMedia = document.querySelectorAll('*[class*="PrePlayDescendantList"').length === 0;
-        const lIsSeasonMedia = document.querySelectorAll('*[data-qa-id="preplay-mainTitle"] a').length > 0;
         const lCurrentUrl = window.location.href;
         try {
-            if (lIsSingleMedia) {
-                await lPlexDownload.downloadSingleMediaItemByUrl(lCurrentUrl);
-            }
-            else if (lIsSeasonMedia) {
-                await lPlexDownload.downloadSeasonMediaItemByUrl(lCurrentUrl);
-            }
-            else {
-                await lPlexDownload.downloadSeriesMediaItemByUrl(lCurrentUrl);
-            }
+            await lPlexDownload.downloadMediaItems(lCurrentUrl);
         }
         catch (e) {
             if (e instanceof Error) {
@@ -117,7 +107,7 @@ class PlexDownload {
             lNewDownloadOverlay.setAttribute('style', `
                 position: fixed;
                 bottom: 6px;
-                right: 6px;
+                right: 15px;
                 width: 360px;
                 background-color: #191a1c;
                 border-radius: 8px;
@@ -132,36 +122,12 @@ class PlexDownload {
         }
     }
     /**
-     * Add all media item file of a season to the download queue.
-     * @param pUrl - Media url.
+     * Adds all files from media item into the download queue.
+     * @param pUrl - Media item url.
      */
-    async downloadSeasonMediaItemByUrl(pUrl) {
+    async downloadMediaItems(pUrl) {
         const lPlexService = new PlexService_1.PlexService();
-        const lUrlList = await lPlexService.getSeasonFileItemList(pUrl);
-        // Add each url to download queue
-        for (const lUrl of lUrlList) {
-            this.addDownloadToQueue(lUrl);
-        }
-    }
-    /**
-     * Add all media item file of a series to the download queue.
-     * @param pUrl - Media url.
-     */
-    async downloadSeriesMediaItemByUrl(pUrl) {
-        const lPlexService = new PlexService_1.PlexService();
-        const lUrlList = await lPlexService.getSerieFileItemList(pUrl);
-        // Add each url to download queue
-        for (const lUrl of lUrlList) {
-            this.addDownloadToQueue(lUrl);
-        }
-    }
-    /**
-     * Add single media item file to the download queue.
-     * @param pUrl - Media url.
-     */
-    async downloadSingleMediaItemByUrl(pUrl) {
-        const lPlexService = new PlexService_1.PlexService();
-        const lUrlList = await lPlexService.getEpisodeFileItemList(pUrl);
+        const lUrlList = await lPlexService.getMediaItemFileList(pUrl);
         // Add each url to download queue
         for (const lUrl of lUrlList) {
             this.addDownloadToQueue(lUrl);
@@ -313,8 +279,8 @@ class PlexService {
         this.mXPathConfig = {
             accessTokenXpath: "//Device[@clientIdentifier='{clientid}']/@accessToken",
             baseUriXpath: "//Device[@clientIdentifier='{clientid}']/Connection[@local='0']/@uri",
-            mediaKeyXpath: '//Media/Part[1]/@key',
-            mediaFilenameXpath: '//Media/Part[1]/@file',
+            mediaKeyXpath: '//Video/Media[1]/Part[1]/@key',
+            mediaFilenameXpath: '//Video/Media[1]/Part[1]/@file',
             mediaChildrenFileMetaIdXpath: '//Video/@ratingKey',
             mediaChildrenDirectoryMetaIdXpath: '//Directory/@ratingKey'
         };
@@ -327,47 +293,18 @@ class PlexService {
         };
     }
     /**
-     * Get download link for single episode or movie.
-     * @param pMediaUrl - Media url.
+     * Get all download file items for the meta data id.
+     * @param pMediaUrl - File or directory meta data id.
      */
-    async getEpisodeFileItemList(pMediaUrl) {
-        const lAccessConfiguration = await this.getLibraryAccess(pMediaUrl);
+    async getMediaItemFileList(pMediaUrl) {
+        const lLibraryAccess = await this.getLibraryAccess(pMediaUrl);
         const lMetaDataId = this.getMediaMetaDataId(pMediaUrl);
-        const lMediaConnection = await this.getMediaFileConnection(lAccessConfiguration, lMetaDataId);
-        return [this.getMediaFileItem(lMediaConnection)];
-    }
-    /**
-     * Get download link for all episodes of a season.
-     * @param pMediaUrl - Media url.
-     */
-    async getSeasonFileItemList(pMediaUrl) {
-        const lAccessConfiguration = await this.getLibraryAccess(pMediaUrl);
-        const lMetaDataId = this.getMediaMetaDataId(pMediaUrl);
-        const lChildFileConnectionList = await this.getMediaDirectoryChildFileConnections(lAccessConfiguration, lMetaDataId);
+        // Read all child files.
+        const lFileConnectionList = await this.getMediaItemChildFileConnectionList(lLibraryAccess, lMetaDataId);
         // Generate file items of file connections.
         const lMediaFileItemList = new Array();
-        for (const lConnection of lChildFileConnectionList) {
+        for (const lConnection of lFileConnectionList) {
             lMediaFileItemList.push(this.getMediaFileItem(lConnection));
-        }
-        return lMediaFileItemList;
-    }
-    /**
-     * Get download link for all episodes of a series.
-     * @param pMediaUrl - Media url.
-     */
-    async getSerieFileItemList(pMediaUrl) {
-        const lAccessConfiguration = await this.getLibraryAccess(pMediaUrl);
-        const lMetaDataId = this.getMediaMetaDataId(pMediaUrl);
-        const lDirecoryList = await this.getMediaChildDirectoryList(lAccessConfiguration, lMetaDataId);
-        // Generate file items of file connections.
-        const lMediaFileItemList = new Array();
-        // For each season.
-        for (const lDirectory of lDirecoryList) {
-            const lChildFileConnectionList = await this.getMediaDirectoryChildFileConnections(lAccessConfiguration, lDirectory.metaDataId);
-            // Generate file items of file connections.
-            for (const lConnection of lChildFileConnectionList) {
-                lMediaFileItemList.push(this.getMediaFileItem(lConnection));
-            }
         }
         return lMediaFileItemList;
     }
@@ -390,16 +327,11 @@ class PlexService {
         const lApiXml = await this.loadXml(this.mUrlConfig.apiResourceUrl.replace('{token}', lLoginToken));
         // Try to get access token and base uri.
         const lAccessTokenNode = lApiXml.evaluate(this.mXPathConfig.accessTokenXpath.replace('{clientid}', lClientIdMatch[1]), lApiXml, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-        const lBaseUriNode = lApiXml.evaluate(this.mXPathConfig.baseUriXpath.replace('{clientid}', lClientIdMatch[1]), lApiXml, null, XPathResult.UNORDERED_NODE_ITERATOR_TYPE, null);
+        const lBaseUriNode = lApiXml.evaluate(this.mXPathConfig.baseUriXpath.replace('{clientid}', lClientIdMatch[1]), lApiXml, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
         // base uri list
         const lBaseUriList = new Array();
-        {
-            // Iterate over all base uri nodes and save text content in array.
-            let lIteratorNode = lBaseUriNode.iterateNext();
-            while (lIteratorNode) {
-                lBaseUriList.push(lIteratorNode.textContent);
-                lIteratorNode = lBaseUriNode.iterateNext();
-            }
+        for (let lIndex = 0; lIndex < lBaseUriNode.snapshotLength; lIndex++) {
+            lBaseUriList.push(lBaseUriNode.snapshotItem(lIndex).textContent);
         }
         // Validate access token and base url.
         if (!lAccessTokenNode.singleNodeValue) {
@@ -414,59 +346,58 @@ class PlexService {
         };
     }
     /**
-     *
-     * @param pLibraryAccess - Library access.
-     * @param pMetaDataId - Directory meta data id.
+     * Get download url of media.
+     * @param pMediaFileConnection - Media connection.
+     * @returns download url of media.
      */
-    async getMediaChildDirectoryList(pLibraryAccess, pMetaDataId) {
-        for (const lBaseUri of pLibraryAccess.baseUriList) {
-            // Try to get media
-            try {
-                // Create child url.
-                let lMediaChildUrl = this.mUrlConfig.apiChildrenUrl;
-                lMediaChildUrl = lMediaChildUrl.replace('{baseuri}', lBaseUri);
-                lMediaChildUrl = lMediaChildUrl.replace('{metaId}', pMetaDataId);
-                lMediaChildUrl = lMediaChildUrl.replace('{token}', pLibraryAccess.accessToken);
-                // Get media childs xml.
-                const lChildXml = await this.loadXml(lMediaChildUrl);
-                // Get child informations.
-                const lMetaDataIdNodes = lChildXml.evaluate(this.mXPathConfig.mediaChildrenDirectoryMetaIdXpath, lChildXml, null, XPathResult.ORDERED_NODE_ITERATOR_TYPE, null);
-                // Convert in string arrays.
-                const lMetaDataIdList = new Array();
-                {
-                    // Iterate over all base uri nodes and save text content in array.
-                    let lMetaDataIdIteratorNode = lMetaDataIdNodes.iterateNext();
-                    while (lMetaDataIdIteratorNode) {
-                        lMetaDataIdList.push(lMetaDataIdIteratorNode.textContent);
-                        lMetaDataIdIteratorNode = lMetaDataIdNodes.iterateNext();
-                    }
-                }
-                // Build media connections from ordered result lists.
-                const mMediaConnectionList = new Array();
-                for (const lMetaDataId of lMetaDataIdList) {
-                    mMediaConnectionList.push({
-                        baseUri: lBaseUri,
-                        accessToken: pLibraryAccess.accessToken,
-                        metaDataId: lMetaDataId
-                    });
-                }
-                return mMediaConnectionList;
+    getMediaFileItem(pMediaFileConnection) {
+        // Build download url.
+        let lDownloadUrl = this.mUrlConfig.downloadUrl;
+        lDownloadUrl = lDownloadUrl.replace('{baseuri}', pMediaFileConnection.baseUri);
+        lDownloadUrl = lDownloadUrl.replace('{token}', pMediaFileConnection.accessToken);
+        lDownloadUrl = lDownloadUrl.replace('{mediakey}', pMediaFileConnection.mediaKey);
+        return {
+            url: lDownloadUrl,
+            fileName: pMediaFileConnection.fileName
+        };
+    }
+    /**
+     * Get all media item files by loading child lists with recursion
+     * until media files are found.
+     * @param pLibraryAccess - Library access.
+     * @param pMetaDataId - File or directory metadata id.
+     */
+    async getMediaItemChildFileConnectionList(pLibraryAccess, pMetaDataId) {
+        const lResultFileConnectionList = new Array();
+        // Try to load media item childs.
+        const lMediaChildList = await this.getMediaItemChildList(pLibraryAccess, pMetaDataId);
+        // Check if media item has childs.
+        if (!lMediaChildList) {
+            lResultFileConnectionList.push(await this.getMediaItemFileConnection(pLibraryAccess, pMetaDataId));
+        }
+        else if (lMediaChildList.length !== 0) {
+            // Check child type.
+            if ('fileName' in lMediaChildList[0]) {
+                // Add file connections to result
+                const lFileConnectionList = lMediaChildList;
+                lResultFileConnectionList.push(...lFileConnectionList);
             }
-            catch (e) {
-                // eslint-disable-next-line no-console
-                console.log(e);
-                // Try next base uri.
-                continue;
+            else {
+                // Load child files of directory.
+                const lDirectoryConnectionList = lMediaChildList;
+                for (const lDirectory of lDirectoryConnectionList) {
+                    lResultFileConnectionList.push(...(await this.getMediaItemChildFileConnectionList(pLibraryAccess, lDirectory.metaDataId)));
+                }
             }
         }
-        throw new Error('No directory connection for this MetaID found');
+        return lResultFileConnectionList;
     }
     /**
      * Get all child file connections for a media directory.
      * @param pLibraryAccess - Library access.
-     * @param pDirectoryMetaDataId - Media meta data id.
+     * @param pMetaDataId - Media meta data id.
      */
-    async getMediaDirectoryChildFileConnections(pLibraryAccess, pDirectoryMetaDataId) {
+    async getMediaItemChildList(pLibraryAccess, pDirectoryMetaDataId) {
         for (const lBaseUri of pLibraryAccess.baseUriList) {
             // Try to get media
             try {
@@ -477,44 +408,45 @@ class PlexService {
                 lMediaChildUrl = lMediaChildUrl.replace('{token}', pLibraryAccess.accessToken);
                 // Get media childs xml.
                 const lChildXml = await this.loadXml(lMediaChildUrl);
-                // Get child informations.
-                const lMediaKeyNodes = lChildXml.evaluate(this.mXPathConfig.mediaKeyXpath, lChildXml, null, XPathResult.ORDERED_NODE_ITERATOR_TYPE, null);
-                const lFileNameNodes = lChildXml.evaluate(this.mXPathConfig.mediaFilenameXpath, lChildXml, null, XPathResult.ORDERED_NODE_ITERATOR_TYPE, null);
-                const lMetaDataIdNodes = lChildXml.evaluate(this.mXPathConfig.mediaChildrenFileMetaIdXpath, lChildXml, null, XPathResult.ORDERED_NODE_ITERATOR_TYPE, null);
-                // Convert in string arrays.
-                const lMediaKeyList = new Array();
-                const lFileNameList = new Array();
-                const lMetaDataIdList = new Array();
-                {
-                    // Iterate over all base uri nodes and save text content in array.
-                    let lMediaKeyIteratorNode = lMediaKeyNodes.iterateNext();
-                    let lFileNameIteratorNode = lFileNameNodes.iterateNext();
-                    let lMetaDataIdIteratorNode = lMetaDataIdNodes.iterateNext();
-                    while (lMediaKeyIteratorNode && lFileNameIteratorNode && lMetaDataIdIteratorNode) {
-                        lMediaKeyList.push(lMediaKeyIteratorNode.textContent);
-                        lFileNameList.push(lFileNameIteratorNode.textContent.split('/').pop());
-                        lMetaDataIdList.push(lMetaDataIdIteratorNode.textContent);
-                        lMediaKeyIteratorNode = lMediaKeyNodes.iterateNext();
-                        lFileNameIteratorNode = lFileNameNodes.iterateNext();
-                        lMetaDataIdIteratorNode = lMetaDataIdNodes.iterateNext();
+                // Try getting directory.
+                const lDirectoryMetaDataNodes = lChildXml.evaluate(this.mXPathConfig.mediaChildrenDirectoryMetaIdXpath, lChildXml, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+                if (lDirectoryMetaDataNodes.snapshotLength !== 0) {
+                    // Create directory connections.
+                    const mMediaConnectionList = new Array();
+                    for (let lNodeIndex = 0; lNodeIndex < lDirectoryMetaDataNodes.snapshotLength; lNodeIndex++) {
+                        mMediaConnectionList.push({
+                            baseUri: lBaseUri,
+                            accessToken: pLibraryAccess.accessToken,
+                            metaDataId: lDirectoryMetaDataNodes.snapshotItem(lNodeIndex).textContent
+                        });
                     }
-                    // Validate same same.
-                    if (lMediaKeyIteratorNode || lFileNameIteratorNode || lMetaDataIdIteratorNode) {
-                        throw new Error('Wrong result for media item children.');
+                    return mMediaConnectionList;
+                }
+                else {
+                    // Items should be files.
+                    // Get child informations.
+                    const lMediaKeyNodes = lChildXml.evaluate(this.mXPathConfig.mediaKeyXpath, lChildXml, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+                    const lFileNameNodes = lChildXml.evaluate(this.mXPathConfig.mediaFilenameXpath, lChildXml, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+                    const lMetaDataIdNodes = lChildXml.evaluate(this.mXPathConfig.mediaChildrenFileMetaIdXpath, lChildXml, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+                    // Validate same length and for not empty.
+                    if (lMediaKeyNodes.snapshotLength !== lFileNameNodes.snapshotLength || lFileNameNodes.snapshotLength !== lMetaDataIdNodes.snapshotLength || lMediaKeyNodes.snapshotLength === 0) {
+                        throw new Error('Wrong result for media item file children.');
                     }
+                    const lMediaConnectionList = new Array();
+                    for (let lNodeIndex = 0; lNodeIndex < lMediaKeyNodes.snapshotLength; lNodeIndex++) {
+                        // Get filename.
+                        const lFileName = lFileNameNodes.snapshotItem(lNodeIndex).textContent.split('/').pop();
+                        // Build media connections from ordered result lists.
+                        lMediaConnectionList.push({
+                            mediaKey: lMediaKeyNodes.snapshotItem(lNodeIndex).textContent,
+                            baseUri: lBaseUri,
+                            accessToken: pLibraryAccess.accessToken,
+                            metaDataId: lMetaDataIdNodes.snapshotItem(lNodeIndex).textContent,
+                            fileName: lFileName
+                        });
+                    }
+                    return lMediaConnectionList;
                 }
-                // Build media connections from ordered result lists.
-                const mMediaConnectionList = new Array();
-                for (let lIndex = 0; lIndex < lMetaDataIdList.length; lIndex++) {
-                    mMediaConnectionList.push({
-                        mediaKey: lMediaKeyList[lIndex],
-                        baseUri: lBaseUri,
-                        accessToken: pLibraryAccess.accessToken,
-                        metaDataId: lMetaDataIdList[lIndex],
-                        fileName: lFileNameList[lIndex]
-                    });
-                }
-                return mMediaConnectionList;
             }
             catch (e) {
                 // eslint-disable-next-line no-console
@@ -523,22 +455,22 @@ class PlexService {
                 continue;
             }
         }
-        throw new Error('No file connection for this MetaID found');
+        return null;
     }
     /**
-     * Get connection data for media item.
-     * @param pAccessConfiguration - Device access configuration.
+     * Get connection data for media file item.
+     * @param pLibraryAccess - Device access configuration.
      * @param pFileMetaDataId - MetaData Id.
      */
-    async getMediaFileConnection(pAccessConfiguration, pFileMetaDataId) {
-        for (const lBaseUri of pAccessConfiguration.baseUriList) {
+    async getMediaItemFileConnection(pLibraryAccess, pFileMetaDataId) {
+        for (const lBaseUri of pLibraryAccess.baseUriList) {
             // Try to get media
             try {
                 // Create media url.
                 let lMediaUrl = this.mUrlConfig.apiLibraryUrl;
                 lMediaUrl = lMediaUrl.replace('{baseuri}', lBaseUri);
                 lMediaUrl = lMediaUrl.replace('{id}', pFileMetaDataId);
-                lMediaUrl = lMediaUrl.replace('{token}', pAccessConfiguration.accessToken);
+                lMediaUrl = lMediaUrl.replace('{token}', pLibraryAccess.accessToken);
                 // Get media xml.
                 const lDocument = await this.loadXml(lMediaUrl);
                 // Load media key and validate.
@@ -556,7 +488,7 @@ class PlexService {
                 return {
                     mediaKey: lMediaKeyNode.singleNodeValue.textContent,
                     baseUri: lBaseUri,
-                    accessToken: pAccessConfiguration.accessToken,
+                    accessToken: pLibraryAccess.accessToken,
                     metaDataId: pFileMetaDataId,
                     fileName: lFileName
                 };
@@ -568,23 +500,7 @@ class PlexService {
                 continue;
             }
         }
-        throw new Error('No connection for this MetaID found');
-    }
-    /**
-     * Get download url of media.
-     * @param pMediaFileConnection - Media connection.
-     * @returns download url of media.
-     */
-    getMediaFileItem(pMediaFileConnection) {
-        // Build download url.
-        let lDownloadUrl = this.mUrlConfig.downloadUrl;
-        lDownloadUrl = lDownloadUrl.replace('{baseuri}', pMediaFileConnection.baseUri);
-        lDownloadUrl = lDownloadUrl.replace('{token}', pMediaFileConnection.accessToken);
-        lDownloadUrl = lDownloadUrl.replace('{mediakey}', pMediaFileConnection.mediaKey);
-        return {
-            url: lDownloadUrl,
-            fileName: pMediaFileConnection.fileName
-        };
+        throw new Error('No file connection for this MetaID found');
     }
     /**
      * Get media id from url.

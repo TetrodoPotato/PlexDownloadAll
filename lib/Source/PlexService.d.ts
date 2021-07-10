@@ -6,49 +6,40 @@ export declare class PlexService {
      */
     constructor();
     /**
-     * Get download link for single episode or movie.
-     * @param pMediaUrl - Media url.
+     * Get all download file items for the meta data id.
+     * @param pMediaUrl - File or directory meta data id.
      */
-    getEpisodeFileItemList(pMediaUrl: string): Promise<Array<MediaFileItem>>;
-    /**
-     * Get download link for all episodes of a season.
-     * @param pMediaUrl - Media url.
-     */
-    getSeasonFileItemList(pMediaUrl: string): Promise<Array<MediaFileItem>>;
-    /**
-     * Get download link for all episodes of a series.
-     * @param pMediaUrl - Media url.
-     */
-    getSerieFileItemList(pMediaUrl: string): Promise<Array<MediaFileItem>>;
+    getMediaItemFileList(pMediaUrl: string): Promise<Array<MediaFileItem>>;
     /**
      * Get access configuration for the current viewed media container.
      * @param pLibraryUrl - Url of any media item inside the library.
      */
     private getLibraryAccess;
     /**
-     *
-     * @param pLibraryAccess - Library access.
-     * @param pMetaDataId - Directory meta data id.
-     */
-    private getMediaChildDirectoryList;
-    /**
-     * Get all child file connections for a media directory.
-     * @param pLibraryAccess - Library access.
-     * @param pDirectoryMetaDataId - Media meta data id.
-     */
-    private getMediaDirectoryChildFileConnections;
-    /**
-     * Get connection data for media item.
-     * @param pAccessConfiguration - Device access configuration.
-     * @param pFileMetaDataId - MetaData Id.
-     */
-    private getMediaFileConnection;
-    /**
      * Get download url of media.
      * @param pMediaFileConnection - Media connection.
      * @returns download url of media.
      */
     private getMediaFileItem;
+    /**
+     * Get all media item files by loading child lists with recursion
+     * until media files are found.
+     * @param pLibraryAccess - Library access.
+     * @param pMetaDataId - File or directory metadata id.
+     */
+    private getMediaItemChildFileConnectionList;
+    /**
+     * Get all child file connections for a media directory.
+     * @param pLibraryAccess - Library access.
+     * @param pMetaDataId - Media meta data id.
+     */
+    private getMediaItemChildList;
+    /**
+     * Get connection data for media file item.
+     * @param pLibraryAccess - Device access configuration.
+     * @param pFileMetaDataId - MetaData Id.
+     */
+    private getMediaItemFileConnection;
     /**
      * Get media id from url.
      * @param pMediaUrl - Current url.
