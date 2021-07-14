@@ -21,9 +21,9 @@
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const PlexDownload_1 = __webpack_require__(/*! ./PlexDownload */ "./Source/PlexDownload.ts");
+const PlexDownloader_1 = __webpack_require__(/*! ./PlexDownloader */ "./Source/PlexDownloader.ts");
 {
-    const lPlexDownload = new PlexDownload_1.PlexDownload();
+    const lPlexDownload = new PlexDownloader_1.PlexDownloader();
     /**
      * Start download.
      * Decide single or multi download.
@@ -42,12 +42,18 @@ const PlexDownload_1 = __webpack_require__(/*! ./PlexDownload */ "./Source/PlexD
             }
         }
     };
+    /**
+     * Open downloader overlay.
+     */
+    const lOpenOverlay = () => {
+        lPlexDownload.openOverlay();
+    };
     // Scan for play button and append download button.
     setInterval(() => {
         const lPlayButton = document.querySelector('*[data-qa-id="preplay-play"]');
         if (lPlayButton) {
-            const lDownloadbutton = document.querySelector('.plexDownloadButton');
-            if (!lDownloadbutton) {
+            // Check if download button exists.
+            if (!document.querySelector('.plexDownloadButton')) {
                 // Create new download button.
                 const lNewDownloadButton = document.createElement('button');
                 lNewDownloadButton.setAttribute('style', `
@@ -77,72 +83,125 @@ const PlexDownload_1 = __webpack_require__(/*! ./PlexDownload */ "./Source/PlexD
                 lPlayButton.after(lNewDownloadButton);
             }
         }
+        // Check if overlay button exists.
+        const lDiplayWindowButton = document.querySelector('.plexOpenWindowButton');
+        if (!lDiplayWindowButton) {
+            // Create new download button.
+            const lNewOpenOverlayButton = document.createElement('button');
+            lNewOpenOverlayButton.setAttribute('style', `
+                    position: absolute;
+                    right: 10px;
+                    bottom: 10px;
+                    height: 30px;
+                    padding: 0 15px;
+                    background-color: #e5a00d;
+                    color: #1f2326;
+                    border: 0;
+                    font-family: Open Sans Semibold,Helvetica Neue,Helvetica,Arial,sans-serif; 
+                    text-transform: uppercase;              
+                    border-radius: 4px;
+                    overflow: hidden;
+                `);
+            lNewOpenOverlayButton.classList.add('plexOpenWindowButton');
+            lNewOpenOverlayButton.addEventListener('click', async () => {
+                lOpenOverlay();
+            });
+            lNewOpenOverlayButton.appendChild(document.createTextNode('Download Overlay'));
+            // Append button into body root.
+            document.body.appendChild(lNewOpenOverlayButton);
+        }
+        else {
+            // Hide button if window is open or no element is in queue
+            if (!lPlexDownload.downloadsInQueue || lPlexDownload.windowIsOpen) {
+                lDiplayWindowButton.style.display = 'none';
+            }
+            else {
+                lDiplayWindowButton.style.display = 'block';
+            }
+        }
     }, 250);
 }
 
 
 /***/ }),
 
-/***/ "./Source/PlexDownload.ts":
-/*!********************************!*\
-  !*** ./Source/PlexDownload.ts ***!
-  \********************************/
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+/***/ "./Source/PlexDownloadWindow.ts":
+/*!**************************************!*\
+  !*** ./Source/PlexDownloadWindow.ts ***!
+  \**************************************/
+/***/ ((__unused_webpack_module, exports) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PlexDownload = void 0;
-const PlexService_1 = __webpack_require__(/*! ./PlexService */ "./Source/PlexService.ts");
-class PlexDownload {
+exports.PlexDownloadWindow = void 0;
+/**
+ * This class can not use any static properties or hard imports.
+ */
+class PlexDownloadWindow {
     /**
      * Constructor.
-     * Initialize download overlay.
+     * Initialize ui if in decicated window.
      */
     constructor() {
-        // Create overlay if it does not exists.
-        if (document.querySelector('.PlexDownloadOverlay') === null) {
-            // Create overlay element.
-            const lNewDownloadOverlay = document.createElement('div');
-            lNewDownloadOverlay.classList.add('PlexDownloadOverlay');
-            lNewDownloadOverlay.setAttribute('style', `
-                position: fixed;
-                bottom: 6px;
-                right: 15px;
-                width: 360px;
+        this.LOCALSTORAGE_DOWNLOAD_LIST_KEY = 'PlexDownloadList';
+        if (window.isWindow) {
+            // Set body styles.
+            document.body.setAttribute('style', `
                 background-color: #191a1c;
-                border-radius: 8px;
-                max-height: 300px;
-                overflow: auto;
-                box-shadow: 0 4px 10px rgb(0 0 0 / 35%);
                 font-family: Open Sans Regular,Helvetica Neue,Helvetica,Arial,sans-serif; 
                 font-size: 13px;
             `);
-            // Append to body root.
-            document.body.appendChild(lNewDownloadOverlay);
+            // Initialize download list.
+            const lDownloadList = document.createElement('div');
+            lDownloadList.classList.add('DownloadList');
+            document.body.appendChild(lDownloadList);
+            // Initialize lists.
+            this.mDownloadList = new Array();
+            // Add stored to queue.
+            const lStoredListJsonString = localStorage.getItem(this.LOCALSTORAGE_DOWNLOAD_LIST_KEY);
+            if (lStoredListJsonString) {
+                const lStoredList = JSON.parse(lStoredListJsonString);
+                for (const lItem of lStoredList) {
+                    this.addDownloadToQueue(lItem);
+                }
+            }
         }
     }
     /**
-     * Adds all files from media item into the download queue.
-     * @param pUrl - Media item url.
+     * Is a window open.
      */
-    async downloadMediaItems(pUrl) {
-        const lPlexService = new PlexService_1.PlexService();
-        const lUrlList = await lPlexService.getMediaItemFileList(pUrl);
-        // Add each url to download queue
-        for (const lUrl of lUrlList) {
-            this.addDownloadToQueue(lUrl);
-        }
+    get windowIsOpen() {
+        return this.mWindow && !this.mWindow.closed;
+    }
+    /**
+     * Is queue is empty.
+     */
+    get elementsInQueue() {
+        var _a;
+        // [] => Empty
+        return ((_a = localStorage.getItem(this.LOCALSTORAGE_DOWNLOAD_LIST_KEY)) === null || _a === void 0 ? void 0 : _a.length) > 2;
     }
     /**
      * Add download url to the download queue.
      * @param pMediaItem - Download url.
      */
-    addDownloadToQueue(pMediaItem) {
+    async addDownloadToQueue(pMediaItem) {
+        // Check if current window is not a child windw.
+        if (!window.isWindow) {
+            // Open new window if not already open.
+            await this.openWindow();
+            // Forward to actual window.
+            this.mWindow.downloader.addDownloadToQueue(pMediaItem);
+            return;
+        }
+        // Add item to download list.
+        this.mDownloadList.push(pMediaItem);
+        this.saveDownloadList();
         // Create download row element.
         const lDownloadElement = document.createElement('div');
         lDownloadElement.setAttribute('data-url', pMediaItem.url);
         lDownloadElement.setAttribute('data-filename', pMediaItem.fileName);
-        lDownloadElement.setAttribute('style', 'display: flex; margin: 0px 6px; padding: 8px 0px;');
+        lDownloadElement.setAttribute('style', 'display: flex; margin: 0px 6px; padding: 8px 0px; color: #eee;');
         lDownloadElement.classList.add('PlexDownloadElement');
         // Create download file name.
         const lDownloadElementFileName = document.createElement('div');
@@ -167,9 +226,46 @@ class PlexDownload {
         lDownloadElement.appendChild(lDownloadElementProgress);
         lDownloadElement.appendChild(lDownloadElementAbort);
         // Append download element to download overlay.
-        document.querySelector('.PlexDownloadOverlay').appendChild(lDownloadElement);
+        document.querySelector('.DownloadList').appendChild(lDownloadElement);
         // Try to start this download.
         this.startNextDownloadElement();
+    }
+    /**
+     * Open new window if not already open.
+     */
+    async openWindow() {
+        // Dont open a new window inside a opened window.
+        if (window.isWindow) {
+            return;
+        }
+        // Create new window if new window exists or the last window was closed.
+        if (!this.mWindow || this.mWindow.closed) {
+            // Create new window and mark as child window.
+            this.mWindow = window.open('', 'PlexDownloadWindow', 'height=400,width=400,resizable,scrollbars');
+            this.mWindow.isWindow = true;
+            // Wait for the new window to load.
+            await new Promise((pResolve) => {
+                if (this.mWindow.document.readyState === 'complete') {
+                    pResolve();
+                }
+                else {
+                    this.mWindow.document.addEventListener('load', () => {
+                        pResolve();
+                    }, true);
+                }
+            });
+            // Inject script. Needs to be a function.
+            const lInjectionFunction = function () {
+                // Create new downloader and export to window.
+                const lPlexDownloadWindow = new PlexDownloadWindow();
+                window.downloader = lPlexDownloadWindow;
+            };
+            // Create script element.
+            const lInjectstionScriptElement = document.createElement('script');
+            lInjectstionScriptElement.innerHTML = PlexDownloadWindow.toString() + '(' + lInjectionFunction.toString() + '());';
+            // Inject in new window.
+            this.mWindow.document.body.appendChild(lInjectstionScriptElement);
+        }
     }
     /**
      * Download blob to user file system.
@@ -195,6 +291,13 @@ class PlexDownload {
         document.body.removeChild(lAnchorElement);
     }
     /**
+     * Save download list as json string into local storage.
+     */
+    saveDownloadList() {
+        const lJsonString = JSON.stringify(this.mDownloadList);
+        localStorage.setItem(this.LOCALSTORAGE_DOWNLOAD_LIST_KEY, lJsonString);
+    }
+    /**
      * Get the next download element and start downloading
      * if no other download is running.
      */
@@ -215,7 +318,18 @@ class PlexDownload {
             const lAbortElement = lDownloadElement.querySelector('.PlexDownloadElementAbort');
             // Close download element function.
             const lCloseDownloadElement = () => {
+                // Remove HTML element from list.
                 lDownloadElement.remove();
+                // Remove item from download list.
+                const lMediaFileListIndex = this.mDownloadList.findIndex((pItem) => {
+                    return pItem.url === lDownloadUrl;
+                });
+                if (lMediaFileListIndex !== -1) {
+                    // Remove item from download list and save to local storage.
+                    this.mDownloadList.splice(lMediaFileListIndex, 1);
+                    this.saveDownloadList();
+                }
+                // Try to start the next download.
                 this.startNextDownloadElement();
             };
             // Create and start xhr.
@@ -256,7 +370,62 @@ class PlexDownload {
         }
     }
 }
-exports.PlexDownload = PlexDownload;
+exports.PlexDownloadWindow = PlexDownloadWindow;
+
+
+/***/ }),
+
+/***/ "./Source/PlexDownloader.ts":
+/*!**********************************!*\
+  !*** ./Source/PlexDownloader.ts ***!
+  \**********************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PlexDownloader = void 0;
+const PlexDownloadWindow_1 = __webpack_require__(/*! ./PlexDownloadWindow */ "./Source/PlexDownloadWindow.ts");
+const PlexService_1 = __webpack_require__(/*! ./PlexService */ "./Source/PlexService.ts");
+class PlexDownloader {
+    /**
+     * Constructor.
+     * Initialize download overlay.
+     */
+    constructor() {
+        this.mWindow = new PlexDownloadWindow_1.PlexDownloadWindow();
+    }
+    /**
+     * Is window open.
+     */
+    get windowIsOpen() {
+        return this.mWindow.windowIsOpen;
+    }
+    /**
+     * Is queue is empty.
+     */
+    get downloadsInQueue() {
+        return this.mWindow.elementsInQueue;
+    }
+    /**
+     * Adds all files from media item into the download queue.
+     * @param pUrl - Media item url.
+     */
+    async downloadMediaItems(pUrl) {
+        const lPlexService = new PlexService_1.PlexService();
+        const lUrlList = await lPlexService.getMediaItemFileList(pUrl);
+        // Add each url to download queue
+        for (const lUrl of lUrlList) {
+            await this.mWindow.addDownloadToQueue(lUrl);
+        }
+    }
+    /**
+     * Open overlay.
+     */
+    async openOverlay() {
+        await this.mWindow.openWindow();
+    }
+}
+exports.PlexDownloader = PlexDownloader;
 
 
 /***/ }),
@@ -280,7 +449,8 @@ class PlexService {
             accessTokenXpath: "//Device[@clientIdentifier='{clientid}']/@accessToken",
             baseUriXpath: "//Device[@clientIdentifier='{clientid}']/Connection[@local='0']/@uri",
             mediaKeyXpath: '//Video/Media[1]/Part[1]/@key',
-            mediaFilenameXpath: '//Video/Media[1]/Part[1]/@file',
+            mediaFileNameXpath: '//Video/Media[1]/Part[1]/@file',
+            mediaFileSizeXpath: '//Video/Media[1]/Part[1]/@size',
             mediaChildrenFileMetaIdXpath: '//Video/@ratingKey',
             mediaChildrenDirectoryMetaIdXpath: '//Directory/@ratingKey'
         };
@@ -358,7 +528,8 @@ class PlexService {
         lDownloadUrl = lDownloadUrl.replace('{mediakey}', pMediaFileConnection.mediaKey);
         return {
             url: lDownloadUrl,
-            fileName: pMediaFileConnection.fileName
+            fileName: pMediaFileConnection.fileName,
+            baseUri: pMediaFileConnection.baseUri
         };
     }
     /**
@@ -426,10 +597,14 @@ class PlexService {
                     // Items should be files.
                     // Get child informations.
                     const lMediaKeyNodes = lChildXml.evaluate(this.mXPathConfig.mediaKeyXpath, lChildXml, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
-                    const lFileNameNodes = lChildXml.evaluate(this.mXPathConfig.mediaFilenameXpath, lChildXml, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+                    const lFileNameNodes = lChildXml.evaluate(this.mXPathConfig.mediaFileNameXpath, lChildXml, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+                    const lFileSizeNode = lChildXml.evaluate(this.mXPathConfig.mediaFileSizeXpath, lChildXml, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
                     const lMetaDataIdNodes = lChildXml.evaluate(this.mXPathConfig.mediaChildrenFileMetaIdXpath, lChildXml, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
                     // Validate same length and for not empty.
-                    if (lMediaKeyNodes.snapshotLength !== lFileNameNodes.snapshotLength || lFileNameNodes.snapshotLength !== lMetaDataIdNodes.snapshotLength || lMediaKeyNodes.snapshotLength === 0) {
+                    if (lMediaKeyNodes.snapshotLength !== lFileNameNodes.snapshotLength ||
+                        lFileNameNodes.snapshotLength !== lMetaDataIdNodes.snapshotLength ||
+                        lFileSizeNode.snapshotLength !== lMetaDataIdNodes.snapshotLength ||
+                        lMediaKeyNodes.snapshotLength === 0) {
                         throw new Error('Wrong result for media item file children.');
                     }
                     const lMediaConnectionList = new Array();
@@ -442,7 +617,8 @@ class PlexService {
                             baseUri: lBaseUri,
                             accessToken: pLibraryAccess.accessToken,
                             metaDataId: lMetaDataIdNodes.snapshotItem(lNodeIndex).textContent,
-                            fileName: lFileName
+                            fileName: lFileName,
+                            fileSize: parseInt(lFileSizeNode.snapshotItem(lNodeIndex).textContent)
                         });
                     }
                     return lMediaConnectionList;
@@ -479,18 +655,25 @@ class PlexService {
                     throw new Error('Media item is no file.');
                 }
                 // Try to get filename.
-                const lFileNameNode = lDocument.evaluate(this.mXPathConfig.mediaFilenameXpath, lDocument, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+                const lFileNameNode = lDocument.evaluate(this.mXPathConfig.mediaFileNameXpath, lDocument, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
                 if (!lFileNameNode.singleNodeValue) {
                     throw new Error('No filename for this media item found.');
                 }
+                // Try to get file size.
+                const lFileSizeNode = lDocument.evaluate(this.mXPathConfig.mediaFileSizeXpath, lDocument, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+                if (!lFileSizeNode.singleNodeValue) {
+                    throw new Error('No file size for this media item found.');
+                }
                 // Get filename from last part of the path.
                 const lFileName = lFileNameNode.singleNodeValue.textContent.split('/').pop();
+                const lFileSize = parseInt(lFileSizeNode.singleNodeValue.textContent);
                 return {
                     mediaKey: lMediaKeyNode.singleNodeValue.textContent,
                     baseUri: lBaseUri,
                     accessToken: pLibraryAccess.accessToken,
                     metaDataId: pFileMetaDataId,
-                    fileName: lFileName
+                    fileName: lFileName,
+                    fileSize: lFileSize
                 };
             }
             catch (e) {
@@ -564,7 +747,8 @@ exports.PlexService = PlexService;
 /******/ 	// Load entry module and return exports
 /******/ 	__webpack_require__("./Source/Index.ts");
 /******/ 	// This entry module is referenced by other modules so it can't be inlined
-/******/ 	__webpack_require__("./Source/PlexDownload.ts");
+/******/ 	__webpack_require__("./Source/PlexDownloader.ts");
+/******/ 	__webpack_require__("./Source/PlexDownloadWindow.ts");
 /******/ 	var __webpack_exports__ = __webpack_require__("./Source/PlexService.ts");
 /******/ 	
 /******/ })()

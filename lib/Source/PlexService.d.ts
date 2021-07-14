@@ -54,5 +54,6 @@ export declare class PlexService {
 export declare type MediaFileItem = {
     url: string;
     fileName: string;
+    baseUri: string;
 };
 //# sourceMappingURL=PlexService.d.ts.map

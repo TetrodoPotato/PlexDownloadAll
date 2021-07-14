@@ -1,7 +1,7 @@
-import { PlexDownload } from './PlexDownload';
+import { PlexDownloader } from './PlexDownloader';
 
 {
-    const lPlexDownload: PlexDownload = new PlexDownload();
+    const lPlexDownload: PlexDownloader = new PlexDownloader();
 
     /**
      * Start download.
@@ -21,14 +21,19 @@ import { PlexDownload } from './PlexDownload';
         }
     };
 
+    /**
+     * Open downloader overlay.
+     */
+    const lOpenOverlay = () => {
+        lPlexDownload.openOverlay();
+    };
 
     // Scan for play button and append download button.
     setInterval(() => {
         const lPlayButton: HTMLButtonElement = document.querySelector('*[data-qa-id="preplay-play"]');
-
         if (lPlayButton) {
-            const lDownloadbutton: HTMLButtonElement = document.querySelector('.plexDownloadButton');
-            if (!lDownloadbutton) {
+            // Check if download button exists.
+            if (!document.querySelector('.plexDownloadButton')) {
                 // Create new download button.
                 const lNewDownloadButton: HTMLButtonElement = document.createElement('button');
                 lNewDownloadButton.setAttribute('style', `
@@ -59,6 +64,42 @@ import { PlexDownload } from './PlexDownload';
 
                 // Append download button after play button.
                 lPlayButton.after(lNewDownloadButton);
+            }
+        }
+
+        // Check if overlay button exists.
+        const lDiplayWindowButton: HTMLButtonElement = document.querySelector('.plexOpenWindowButton');
+        if (!lDiplayWindowButton) {
+            // Create new download button.
+            const lNewOpenOverlayButton: HTMLButtonElement = document.createElement('button');
+            lNewOpenOverlayButton.setAttribute('style', `
+                    position: absolute;
+                    right: 10px;
+                    bottom: 10px;
+                    height: 30px;
+                    padding: 0 15px;
+                    background-color: #e5a00d;
+                    color: #1f2326;
+                    border: 0;
+                    font-family: Open Sans Semibold,Helvetica Neue,Helvetica,Arial,sans-serif; 
+                    text-transform: uppercase;              
+                    border-radius: 4px;
+                    overflow: hidden;
+                `);
+            lNewOpenOverlayButton.classList.add('plexOpenWindowButton');
+            lNewOpenOverlayButton.addEventListener('click', async () => {
+                lOpenOverlay();
+            });
+            lNewOpenOverlayButton.appendChild(document.createTextNode('Download Overlay'));
+
+            // Append button into body root.
+            document.body.appendChild(lNewOpenOverlayButton);
+        } else {
+            // Hide button if window is open or no element is in queue
+            if (!lPlexDownload.downloadsInQueue || lPlexDownload.windowIsOpen) {
+                lDiplayWindowButton.style.display = 'none';
+            } else {
+                lDiplayWindowButton.style.display = 'block';
             }
         }
     }, 250);

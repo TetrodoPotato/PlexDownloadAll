@@ -11,7 +11,8 @@ export class PlexService {
             accessTokenXpath: "//Device[@clientIdentifier='{clientid}']/@accessToken",
             baseUriXpath: "//Device[@clientIdentifier='{clientid}']/Connection[@local='0']/@uri",
             mediaKeyXpath: '//Video/Media[1]/Part[1]/@key',
-            mediaFilenameXpath: '//Video/Media[1]/Part[1]/@file',
+            mediaFileNameXpath: '//Video/Media[1]/Part[1]/@file',
+            mediaFileSizeXpath: '//Video/Media[1]/Part[1]/@size',
             mediaChildrenFileMetaIdXpath: '//Video/@ratingKey',
             mediaChildrenDirectoryMetaIdXpath: '//Directory/@ratingKey'
         };
@@ -72,7 +73,7 @@ export class PlexService {
 
         // base uri list
         const lBaseUriList = new Array<string>();
-        for(let lIndex: number = 0; lIndex < lBaseUriNode.snapshotLength; lIndex++){
+        for (let lIndex: number = 0; lIndex < lBaseUriNode.snapshotLength; lIndex++) {
             lBaseUriList.push(lBaseUriNode.snapshotItem(lIndex).textContent);
         }
 
@@ -103,7 +104,8 @@ export class PlexService {
 
         return {
             url: lDownloadUrl,
-            fileName: pMediaFileConnection.fileName
+            fileName: pMediaFileConnection.fileName,
+            baseUri: pMediaFileConnection.baseUri
         };
     }
 
@@ -177,11 +179,16 @@ export class PlexService {
 
                     // Get child informations.
                     const lMediaKeyNodes: XPathResult = lChildXml.evaluate(this.mXPathConfig.mediaKeyXpath, lChildXml, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
-                    const lFileNameNodes: XPathResult = lChildXml.evaluate(this.mXPathConfig.mediaFilenameXpath, lChildXml, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+                    const lFileNameNodes: XPathResult = lChildXml.evaluate(this.mXPathConfig.mediaFileNameXpath, lChildXml, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+                    const lFileSizeNode: XPathResult = lChildXml.evaluate(this.mXPathConfig.mediaFileSizeXpath, lChildXml, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
                     const lMetaDataIdNodes: XPathResult = lChildXml.evaluate(this.mXPathConfig.mediaChildrenFileMetaIdXpath, lChildXml, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
 
                     // Validate same length and for not empty.
-                    if (lMediaKeyNodes.snapshotLength !== lFileNameNodes.snapshotLength || lFileNameNodes.snapshotLength !== lMetaDataIdNodes.snapshotLength || lMediaKeyNodes.snapshotLength === 0) {
+                    if (lMediaKeyNodes.snapshotLength !== lFileNameNodes.snapshotLength ||
+                        lFileNameNodes.snapshotLength !== lMetaDataIdNodes.snapshotLength ||
+                        lFileSizeNode.snapshotLength !== lMetaDataIdNodes.snapshotLength ||
+                        lMediaKeyNodes.snapshotLength === 0) {
+
                         throw new Error('Wrong result for media item file children.');
                     }
 
@@ -196,7 +203,8 @@ export class PlexService {
                             baseUri: lBaseUri,
                             accessToken: pLibraryAccess.accessToken,
                             metaDataId: lMetaDataIdNodes.snapshotItem(lNodeIndex).textContent,
-                            fileName: lFileName
+                            fileName: lFileName,
+                            fileSize: parseInt(lFileSizeNode.snapshotItem(lNodeIndex).textContent)
                         });
                     }
 
@@ -238,20 +246,28 @@ export class PlexService {
                 }
 
                 // Try to get filename.
-                const lFileNameNode: XPathResult = lDocument.evaluate(this.mXPathConfig.mediaFilenameXpath, lDocument, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+                const lFileNameNode: XPathResult = lDocument.evaluate(this.mXPathConfig.mediaFileNameXpath, lDocument, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
                 if (!lFileNameNode.singleNodeValue) {
                     throw new Error('No filename for this media item found.');
                 }
 
+                // Try to get file size.
+                const lFileSizeNode: XPathResult = lDocument.evaluate(this.mXPathConfig.mediaFileSizeXpath, lDocument, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+                if (!lFileSizeNode.singleNodeValue) {
+                    throw new Error('No file size for this media item found.');
+                }
+
                 // Get filename from last part of the path.
                 const lFileName: string = lFileNameNode.singleNodeValue.textContent.split('/').pop();
+                const lFileSize: number = parseInt(lFileSizeNode.singleNodeValue.textContent);
 
                 return {
                     mediaKey: lMediaKeyNode.singleNodeValue.textContent,
                     baseUri: lBaseUri,
                     accessToken: pLibraryAccess.accessToken,
                     metaDataId: pFileMetaDataId,
-                    fileName: lFileName
+                    fileName: lFileName,
+                    fileSize: lFileSize
                 };
             } catch (e) {
                 // eslint-disable-next-line no-console
@@ -291,9 +307,45 @@ export class PlexService {
     }
 }
 
-type LibraryAccess = { accessToken: string, baseUriList: Array<string>; };
-type XPathConfig = { accessTokenXpath: string, baseUriXpath: string, mediaKeyXpath: string; mediaFilenameXpath: string; mediaChildrenFileMetaIdXpath: string; mediaChildrenDirectoryMetaIdXpath: string; };
-type UrlConfig = { apiResourceUrl: string, apiLibraryUrl: string, downloadUrl: string; apiChildrenUrl: string; };
-type MediaFileConnection = { baseUri: string; mediaKey: string; metaDataId: string; accessToken: string; fileName: string; };
-type MediaDirectoryConnection = { baseUri: string, metaDataId: string; accessToken: string; };
-export type MediaFileItem = { url: string, fileName: string; };
+type LibraryAccess = {
+    accessToken: string;
+    baseUriList: Array<string>;
+};
+
+type XPathConfig = {
+    accessTokenXpath: string;
+    baseUriXpath: string;
+    mediaKeyXpath: string;
+    mediaFileNameXpath: string;
+    mediaChildrenFileMetaIdXpath: string;
+    mediaChildrenDirectoryMetaIdXpath: string;
+    mediaFileSizeXpath: string;
+};
+
+type UrlConfig = {
+    apiResourceUrl: string;
+    apiLibraryUrl: string;
+    downloadUrl: string;
+    apiChildrenUrl: string;
+};
+
+type MediaFileConnection = {
+    baseUri: string;
+    mediaKey: string;
+    metaDataId: string;
+    accessToken: string;
+    fileName: string;
+    fileSize: number;
+};
+
+type MediaDirectoryConnection = {
+    baseUri: string;
+    metaDataId: string;
+    accessToken: string;
+};
+
+export type MediaFileItem = {
+    url: string;
+    fileName: string;
+    baseUri: string;
+};
